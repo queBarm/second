@@ -1,7 +1,14 @@
 package daysteps
 
 import (
+	"errors"
+	"fmt"
+	"log"
+	"strconv"
+	"strings"
 	"time"
+
+	"github.com/Yandex-Practicum/tracker/internal/spentcalories"
 )
 
 const (
@@ -12,9 +19,63 @@ const (
 )
 
 func parsePackage(data string) (int, time.Duration, error) {
-	// TODO: реализовать функцию
+	// Разделяем data по ','
+	parts := strings.Split(data, ",")
+
+	// Проверить, чтобы длина слайса была равна 2.
+	if len(parts) != 2 {
+		return 0, 0, errors.New("некорректный формат (parsePackage)")
+	}
+
+	// Преобразовать первый элемент слайса (количество шагов) в тип int.
+	steps, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// Проверить: количество шагов должно быть больше 0.
+	if steps <= 0 {
+		return 0, 0, errors.New("количество шагов должно быть больше 0 (parsePackage)")
+	}
+
+	// Преобразовать второй элемент слайса в time.Duration.
+	duration, err := time.ParseDuration(strings.TrimSpace(parts[1]))
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// Проверка на нулевую продолжительность
+	if duration <= 0 {
+		return 0, 0, errors.New("продолжительность должна быть больше 0 (parsePackage)")
+	}
+
+	return steps, duration, nil
 }
 
 func DayActionInfo(data string, weight, height float64) string {
-	// TODO: реализовать функцию
+
+	// Получить данные о количестве шагов и продолжительности прогулки
+	steps, duration, err := parsePackage(data)
+	if err != nil {
+		log.Println("Ошибка:", err)
+		return ""
+	}
+
+	// Вычислить дистанцию в метрах
+	distanceMeters := float64(steps) * stepLength
+
+	// Перевести дистанцию в километры
+	distanceKm := distanceMeters / mInKm
+
+	// Вычислить количество калорий, потраченных на прогулке
+	calories, err := spentcalories.WalkingSpentCalories(steps, weight, height, duration)
+	if err != nil {
+		log.Println("Ошибка при расчете калорий:", err)
+		return ""
+	}
+
+	// Сформировать строку с результатами
+	result := fmt.Sprintf("Количество шагов: %d.\nДистанция составила %.2f км.\nВы сожгли %.2f ккал.\n",
+		steps, distanceKm, calories)
+	return result
 }
